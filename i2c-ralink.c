@@ -136,11 +136,10 @@ static int rt_i2c_handle_msg(struct i2c_adapter *a, struct i2c_msg* msg)
 			rt_i2c_w32(READ_BLOCK - 1, REG_BYTECNT_REG);
 			rt_i2c_w32(READ_CMD, REG_STARTXFR_REG);
 			for (j = 0; j < READ_BLOCK; j++) {
-				if ((ret=rt_i2c_wait_rx_done())<0)
-					return ret;
-                                if ((ret=rt_i2c_get_ack())<0)
-                                        return ret;
-
+				if (rt_i2c_wait_rx_done() < 0)
+					ret = rt_i2c_wait_rx_done();
+				if (rt_i2c_get_ack() < 0)
+					ret = rt_i2c_get_ack();
 				msg->buf[pos++] = rt_i2c_r32(REG_DATAIN_REG);
 			}
 		}
@@ -149,13 +148,15 @@ static int rt_i2c_handle_msg(struct i2c_adapter *a, struct i2c_msg* msg)
 			printk("i2c-read line busy\n");
 			return -ETIMEDOUT;
 		}
-		rt_i2c_w32(rem - 1, REG_BYTECNT_REG);
-		rt_i2c_w32(READ_CMD, REG_STARTXFR_REG);
+		if (rem) {
+			rt_i2c_w32(rem - 1, REG_BYTECNT_REG);
+			rt_i2c_w32(READ_CMD, REG_STARTXFR_REG);
+		}
 		for (i = 0; i < rem; i++) {
-			if ((ret=rt_i2c_wait_rx_done())<0)
-				return ret;
-                        if ((ret=rt_i2c_get_ack())<0)
-                                return ret;
+			if (rt_i2c_wait_rx_done() < 0)
+				ret = rt_i2c_wait_rx_done();
+			if (rt_i2c_get_ack() < 0)
+				ret = rt_i2c_get_ack();
 
 			msg->buf[pos++] = rt_i2c_r32(REG_DATAIN_REG);
 		}
@@ -169,16 +170,14 @@ static int rt_i2c_handle_msg(struct i2c_adapter *a, struct i2c_msg* msg)
 			rt_i2c_w32(msg->buf[i], REG_DATAOUT_REG);
 			rt_i2c_w32(WRITE_CMD, REG_STARTXFR_REG);
 
-			if ((ret=rt_i2c_wait_tx_done())<0)
-				return ret;
-                        if ((ret=rt_i2c_get_ack())<0)
-                                return ret;
-
-
+			if (rt_i2c_wait_tx_done() < 0)
+				ret = rt_i2c_wait_tx_done();
+			if (rt_i2c_get_ack() < 0)
+				ret = rt_i2c_get_ack();
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static int rt_i2c_master_xfer(struct i2c_adapter *a, struct i2c_msg *m, int n)
